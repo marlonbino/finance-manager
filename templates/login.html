@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% set is_register = (mode|default('')) == 'register' %}
+
+{% block title %}{{ 'Create account' if is_register else 'Sign in' }} | PesaPlan{% endblock %}
+{% block body_class %}login-page{% endblock %}
+
+{% block content %}
+<main class="login-card neo-card">
+    <div class="login-brand">
+        <div class="brand-icon">P</div>
+        <div>
+            <h1>PesaPlan</h1>
+            <p class="login-lead">Every shilling has a job. Split income, spend with control.</p>
+        </div>
+    </div>
+
+    <h2 style="font-size:1.15rem;font-weight:800;">{{ 'Get started' if is_register else 'Welcome back' }}</h2>
+    <p class="login-lead" style="margin-top:8px;">
+        {{ 'Your name, phone, and password.' if is_register else 'Sign in with phone or username.' }}
+    </p>
+
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for message in messages %}
+                <div class="flash">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="auth-tabs">
+        <a class="{{ '' if is_register else 'active' }}" href="/login">Sign in</a>
+        <a class="{{ 'active' if is_register else '' }}" href="/register">Create account</a>
+    </div>
+
+    <form method="POST" action="{{ '/register' if is_register else '/login' }}" class="form-stack">
+        {% if is_register %}
+        <div class="field">
+            <label for="name">Your name</label>
+            <input id="name" type="text" name="name" autocomplete="name" required>
+        </div>
+        <div class="field">
+            <label for="phone">Phone</label>
+            <input id="phone" type="tel" name="phone" autocomplete="tel" placeholder="0712345678" required>
+        </div>
+        {% else %}
+        <div class="field">
+            <label for="username">Phone or username</label>
+            <input id="username" type="text" name="username" autocomplete="username" placeholder="0712345678" required>
+        </div>
+        {% endif %}
+        <div class="field">
+            <label for="password">Password</label>
+            <input id="password" type="password" name="password" autocomplete="{{ 'new-password' if is_register else 'current-password' }}" required>
+        </div>
+        <button type="submit" class="btn-primary">{{ 'Create account' if is_register else 'Continue' }}</button>
+    </form>
+
+    {% if not is_register %}
+    <div class="demo-box">
+        Demo: <strong>user</strong> or <strong>254700000000</strong><br>
+        Password: <strong>password123</strong>
+    </div>
+    {% endif %}
+</main>
+{% endblock %}

@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+{% set show_bottom_nav = true %}
+{% set active_nav = 'activity' %}
+
+{% block title %}Activity | PesaPlan{% endblock %}
+{% block body_class %}has-bottom-nav{% endblock %}
+
+{% block content %}
+<main class="app-frame page-activity">
+    <header class="app-header">
+        <div>
+            <div class="greeting">History</div>
+            <h1>Activity</h1>
+        </div>
+        <a href="/dashboard" class="header-link">Home</a>
+    </header>
+
+    <section class="filter-bar neo-inset">
+        <div class="field-row">
+            <div class="field">
+                <label for="filterDays">Period</label>
+                <select id="filterDays" onchange="loadActivity()">
+                    <option value="7">7 days</option>
+                    <option value="31" selected>31 days</option>
+                    <option value="90">90 days</option>
+                    <option value="">All</option>
+                </select>
+            </div>
+            <div class="field">
+                <label for="filterType">Type</label>
+                <select id="filterType" onchange="loadActivity()">
+                    <option value="">All</option>
+                    <option value="spending">Expenses</option>
+                    <option value="transfer_out">Transfers out</option>
+                    <option value="transfer_in">Transfers in</option>
+                </select>
+            </div>
+        </div>
+        <div class="field">
+            <label for="filterWallet">Wallet</label>
+            <select id="filterWallet" onchange="loadActivity()">
+                <option value="">All wallets</option>
+            </select>
+        </div>
+    </section>
+
+    <section class="panel-card neo-card">
+        <div class="panel-head">
+            <h2>Money in</h2>
+            <p class="panel-note">Income logged in this period</p>
+        </div>
+        <div class="panel-body">
+            <div id="incomeList" class="activity-list"></div>
+        </div>
+    </section>
+
+    <section class="panel-card neo-card">
+        <div class="panel-head">
+            <h2>Movements</h2>
+            <p class="panel-note">Spending and transfers</p>
+        </div>
+        <div class="panel-body">
+            <div id="txList" class="activity-list"></div>
+        </div>
+    </section>
+</main>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    const PP = window.PesaPlan;
+
+    async function loadWallets() {
+        const kitties = await PP.fetchJson('/api/kitties');
+        const sel = document.getElementById('filterWallet');
+        sel.innerHTML = '<option value="">All wallets</option>';
+        kitties.forEach(k => {
+            sel.innerHTML += `<option value="${k.id}">${PP.escapeHtml(k.name)}</option>`;
+        });
+    }
+
+    function txLabel(t) {
+        if (t.type === 'transfer_out') return `→ ${t.related_kitty_name || 'wallet'}`;
+        if (t.type === 'transfer_in') return `← ${t.related_kitty_name || 'wallet'}`;
+        return t.description || 'Expense';
+    }
+
+    function txIcon(t) {
+        if (t.type === 'transfer_out' || t.type === 'transfer_in') return '↔';
+        return '↓';
+    }
+
+    async function loadActivity() {
+        const days = document.getElementById('filterDays').value;
+        const type = document.getElementById('filterType').value;
+        const kitty = document.getElementById('filterWallet').value;
+        const params = new URLSearchParams();
+        if (days) params.set('days', days);
+        if (type) params.set('type', type);
+        if (kitty) params.set('kitty_id', kitty);
+
+        const [txs, incomes] = await Promise.all([
+            PP.fetchJson(`/api/transactions?${params}`),
+            PP.fetchJson('/api/income')
+        ]);
+
+        const incomeEl = document.getElementById('incomeList');
+        if (!incomes.length) {
+            incomeEl.innerHTML = '<div class="empty-state">No income logged yet.</div>';
+        } else {
+            incomeEl.innerHTML = incomes.map(i => `
+                <div class="activity-row activity-row--action">
+                    <div class="activity-icon">↑</div>
+                    <div>
+                        <div class="activity-title">${PP.escapeHtml(i.name)}</div>
+                        <div class="activity-sub">${PP.relativeTime(i.date_received)} · ${PP.escapeHtml(i.notes || '')}</div>
+                    </div>
+                    <div class="activity-amount income">+${PP.formatMoney(i.amount)}</div>
+                    <button type="button" class="row-btn danger" onclick="deleteIncome(${i.id})">Remove</button>
+                </div>
+            `).join('');
+        }
+
+        const txEl = document.getElementById('txList');
+        if (!txs.length) {
+            txEl.innerHTML = '<div class="empty-state">No movements in this filter.</div>';
+        } else {
+            txEl.innerHTML = txs.map(t => `
+                <div class="activity-row activity-row--action">
+                    <div class="activity-icon">${txIcon(t)}</div>
+                    <div>
+                        <div class="activity-title">${PP.escapeHtml(txLabel(t))}</div>
+                        <div class="activity-sub">${PP.escapeHtml(t.kitty_name)} · ${PP.relativeTime(t.date)}</div>
+                    </div>
+                    <div class="activity-amount spend">−${PP.formatMoney(t.amount)}</div>
+                    ${t.type === 'spending' ? `
+                        <button type="button" class="row-btn" onclick="editSpend(${t.id}, ${t.kitty_id}, ${t.amount}, '${PP.escapeHtml(t.description || '').replace(/'/g, "\\'")}')">Edit</button>
+                        <button type="button" class="row-btn danger" onclick="deleteTx(${t.id})">Del</button>
+                    ` : `
+                        <button type="button" class="row-btn danger" onclick="deleteTx(${t.id})">Undo</button>
+                    `}
+                </div>
+            `).join('');
+        }
+    }
+
+    async function deleteTx(id) {
+        if (!confirm('Remove this entry and restore wallet balances?')) return;
+        try {
+            await PP.fetchJson(`/api/transactions/${id}`, {method: 'DELETE'});
+            PP.showToast('Removed.', 'success');
+            loadActivity();
+        } catch (e) { PP.showToast(e.message, 'error'); }
+    }
+
+    async function deleteIncome(id) {
+        if (!confirm('Remove this income and reverse the split across wallets?')) return;
+        try {
+            await PP.fetchJson(`/api/income/${id}`, {method: 'DELETE'});
+            PP.showToast('Income removed.', 'success');
+            loadActivity();
+        } catch (e) { PP.showToast(e.message, 'error'); }
+    }
+
+    async function editSpend(id, kittyId, amount, desc) {
+        const newAmount = prompt('New amount (KES)', amount);
+        if (newAmount === null) return;
+        const newDesc = prompt('Description', desc);
+        if (newDesc === null) return;
+        try {
+            await PP.fetchJson(`/api/transactions/${id}`, {
+                method: 'PUT',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({kitty_id: kittyId, amount: Number(newAmount), description: newDesc})
+            });
+            PP.showToast('Updated.', 'success');
+            loadActivity();
+        } catch (e) { PP.showToast(e.message, 'error'); }
+    }
+
+    loadWallets().then(loadActivity).catch(e => PP.showToast(e.message, 'error'));
+</script>
+{% endblock %}

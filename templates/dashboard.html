@@ -1,0 +1,520 @@
+{% extends "base.html" %}
+{% set show_bottom_nav = true %}
+{% set active_nav = 'home' %}
+
+{% block title %}Home | PesaPlan{% endblock %}
+{% block body_class %}has-bottom-nav has-fab{% endblock %}
+
+{% block content %}
+<main class="app-frame page-home">
+    <header class="app-header">
+        <div>
+            <div class="greeting">PesaPlan</div>
+            <h1>Your money</h1>
+        </div>
+        <a href="/logout" class="header-link">Sign out</a>
+    </header>
+
+    <div class="home-overview">
+        <section class="hero-card neo-card" aria-label="Total balance">
+            <div class="hero-label">Available now</div>
+            <div class="hero-balance" id="totalBalance">KES 0</div>
+            <div class="hero-meta" id="heroMeta">Across 0 wallets</div>
+        </section>
+
+        <section class="chip-row" aria-label="Quick stats">
+            <div class="chip">
+                <div class="chip-label">Split</div>
+                <div class="chip-value" id="allocationTotal">0%</div>
+                <div class="chip-note" id="allocationNote">Set to 100%</div>
+            </div>
+            <div class="chip">
+                <div class="chip-label">Wallets</div>
+                <div class="chip-value" id="kittyCount">0</div>
+                <div class="chip-note">Active</div>
+            </div>
+            <div class="chip">
+                <div class="chip-label">Last spend</div>
+                <div class="chip-value" id="lastSpend">—</div>
+                <div class="chip-note" id="lastSpendNote">None yet</div>
+            </div>
+        </section>
+    </div>
+
+    <div class="home-body">
+        <div class="home-wallets">
+            <div class="plan-banner" id="planBanner">
+                <span><strong id="remainingPercent">100%</strong> of income unassigned</span>
+                <span id="incomeGate">Finish your split first</span>
+            </div>
+
+            <div class="section-head">
+                <h2>Wallets</h2>
+                <span id="walletHint">Click Log to spend</span>
+            </div>
+            <div id="kittiesList" class="wallet-list"></div>
+        </div>
+
+        <div id="alertBanner" class="alert-banner neo-inset" hidden></div>
+
+        <section class="activity-tray neo-inset" aria-label="Recent activity">
+            <div class="section-head">
+                <h2>Activity</h2>
+                <a href="/activity" class="header-link">See all</a>
+            </div>
+            <div id="activityFeed" class="activity-list"></div>
+        </section>
+    </div>
+</main>
+
+<button type="button" class="fab" id="openSheetFab" aria-haspopup="dialog">+ Log money</button>
+
+<div id="money-sheet" class="sheet-root" aria-hidden="true" role="dialog" aria-labelledby="sheet-title">
+    <div class="sheet-backdrop" data-sheet-close></div>
+    <div class="sheet-panel">
+        <div class="sheet-handle" aria-hidden="true"></div>
+        <h2 class="sheet-title" id="sheet-title">Log expense</h2>
+        <p class="sheet-sub" id="sheet-sub">Record what you spent and from which wallet.</p>
+
+        <div class="type-grid type-grid--4" role="tablist">
+            <button type="button" class="type-tile active" data-mode="spend"><span>↓</span>Spend</button>
+            <button type="button" class="type-tile" data-mode="income"><span>↑</span>Income</button>
+            <button type="button" class="type-tile" data-mode="transfer"><span>↔</span>Move</button>
+            <button type="button" class="type-tile" data-mode="wallet"><span>+</span>Wallet</button>
+        </div>
+
+        <form class="sheet-form active" data-mode="spend" onsubmit="event.preventDefault(); recordSpending();">
+            <div class="form-stack">
+                <div class="field">
+                    <label for="spendKitty">Which wallet?</label>
+                    <select id="spendKitty" required></select>
+                </div>
+                <div class="quick-amounts" id="quickAmounts">
+                    <button type="button" data-amt="100">100</button>
+                    <button type="button" data-amt="200">200</button>
+                    <button type="button" data-amt="500">500</button>
+                    <button type="button" data-amt="1000">1k</button>
+                </div>
+                <div class="field-row">
+                    <div class="field">
+                        <label for="spendAmount">How much?</label>
+                        <input type="number" id="spendAmount" min="1" step="0.01" placeholder="0" inputmode="decimal" required>
+                    </div>
+                    <div class="field">
+                        <label for="spendDesc">What for?</label>
+                        <input type="text" id="spendDesc" placeholder="Lunch, fuel…" autocomplete="off">
+                    </div>
+                </div>
+                <button type="submit" class="btn-primary">Confirm expense</button>
+            </div>
+        </form>
+
+        <form class="sheet-form" data-mode="income" onsubmit="event.preventDefault(); addIncome();">
+            <div class="form-stack">
+                <div class="field">
+                    <label for="incomeName">Where from?</label>
+                    <input type="text" id="incomeName" placeholder="Salary, M-Pesa, freelance" required>
+                    <button type="button" class="preset-chip" onclick="document.getElementById('incomeName').value='M-Pesa'">M-Pesa</button>
+                </div>
+                <div id="incomeBreakdown" class="income-breakdown" hidden></div>
+                <div class="field-row">
+                    <div class="field">
+                        <label for="incomeAmount">Amount</label>
+                        <input type="number" id="incomeAmount" min="1" step="0.01" placeholder="0" inputmode="decimal" required>
+                    </div>
+                    <div class="field">
+                        <label for="incomeNotes">Note</label>
+                        <input type="text" id="incomeNotes" placeholder="Optional" autocomplete="off">
+                    </div>
+                </div>
+                <button type="submit" class="btn-primary">Split into wallets</button>
+            </div>
+        </form>
+
+        <form class="sheet-form" data-mode="transfer" onsubmit="event.preventDefault(); transferMoney();">
+            <div class="form-stack">
+                <div class="field">
+                    <label for="transferFrom">From wallet</label>
+                    <select id="transferFrom" required></select>
+                </div>
+                <div class="field">
+                    <label for="transferTo">To wallet</label>
+                    <select id="transferTo" required></select>
+                </div>
+                <div class="field">
+                    <label for="transferAmount">Amount</label>
+                    <input type="number" id="transferAmount" min="1" step="0.01" inputmode="decimal" required>
+                </div>
+                <div class="field">
+                    <label for="transferNote">Note</label>
+                    <input type="text" id="transferNote" placeholder="Optional" autocomplete="off">
+                </div>
+                <button type="submit" class="btn-primary">Move money</button>
+            </div>
+        </form>
+
+        <form class="sheet-form" data-mode="wallet" onsubmit="event.preventDefault(); addKitty();">
+            <div class="form-stack">
+                <div class="field">
+                    <label for="kittyName">Wallet name</label>
+                    <input type="text" id="kittyName" placeholder="Rent, food, transport" required>
+                </div>
+                <div class="field-row">
+                    <div class="field">
+                        <label for="kittyPercent">Income share %</label>
+                        <input type="number" id="kittyPercent" min="0.1" max="100" step="0.1" placeholder="%" required>
+                    </div>
+                    <div class="field">
+                        <label for="kittyColor">Color</label>
+                        <input type="color" id="kittyColor" value="#0f766e">
+                    </div>
+                </div>
+                <div class="field">
+                    <label for="kittyCap">Monthly cap (optional)</label>
+                    <input type="number" id="kittyCap" min="0" step="1" placeholder="e.g. 5000">
+                </div>
+                <button type="submit" class="btn-primary">Add wallet</button>
+            </div>
+        </form>
+
+        <form class="sheet-form" data-mode="edit" onsubmit="event.preventDefault(); saveKittyEdit();">
+            <input type="hidden" id="editKittyId">
+            <div class="form-stack">
+                <div class="field">
+                    <label for="editKittyName">Wallet name</label>
+                    <input type="text" id="editKittyName" required>
+                </div>
+                <div class="field-row">
+                    <div class="field">
+                        <label for="editKittyPercent">Income share %</label>
+                        <input type="number" id="editKittyPercent" min="0.1" max="100" step="0.1" required>
+                    </div>
+                    <div class="field">
+                        <label for="editKittyCap">Monthly cap</label>
+                        <input type="number" id="editKittyCap" min="0" step="1" placeholder="Optional">
+                    </div>
+                </div>
+                <div class="sheet-actions">
+                    <button type="button" class="btn-ghost" data-sheet-close>Cancel</button>
+                    <button type="submit" class="btn-primary">Save changes</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    const PP = window.PesaPlan;
+    let kittiesCache = [];
+
+    function emptyState(text) {
+        return `<div class="empty-state">${PP.escapeHtml(text)}</div>`;
+    }
+
+    async function loadKitties() {
+        kittiesCache = await PP.fetchJson('/api/kitties');
+        const container = document.getElementById('kittiesList');
+        const spendSelect = document.getElementById('spendKitty');
+        const totalPercent = kittiesCache.reduce((sum, k) => sum + Number(k.percentage || 0), 0);
+        const totalBalance = kittiesCache.reduce((sum, k) => sum + Number(k.current_balance || 0), 0);
+        const remaining = Math.max(0, 100 - totalPercent);
+        const ready = totalPercent === 100;
+
+        document.getElementById('totalBalance').textContent = PP.formatMoney(totalBalance);
+        document.getElementById('heroMeta').textContent = `Across ${kittiesCache.length} wallet${kittiesCache.length === 1 ? '' : 's'}`;
+        document.getElementById('allocationTotal').textContent = `${totalPercent.toFixed(1)}%`;
+        document.getElementById('allocationNote').textContent = ready ? 'Ready for income' : `${remaining.toFixed(1)}% to go`;
+        document.getElementById('kittyCount').textContent = kittiesCache.length;
+        document.getElementById('remainingPercent').textContent = `${remaining.toFixed(1)}%`;
+        document.getElementById('incomeGate').textContent = ready ? 'You can log income' : 'Finish split (100%)';
+        document.getElementById('planBanner').style.opacity = ready ? '0.85' : '1';
+
+        const selects = ['spendKitty', 'transferFrom', 'transferTo'];
+        selects.forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.innerHTML = id === 'transferTo'
+                ? '<option value="">Pick destination</option>'
+                : '<option value="">Pick a wallet</option>';
+            kittiesCache.forEach(k => {
+                el.innerHTML += `<option value="${k.id}">${PP.escapeHtml(k.name)} · ${PP.formatMoney(k.current_balance)}</option>`;
+            });
+        });
+
+        const alerts = [];
+        kittiesCache.forEach(k => {
+            if (k.monthly_cap && k.spent_this_month >= k.monthly_cap * 0.8) {
+                alerts.push(`${k.name}: ${k.spent_this_month >= k.monthly_cap ? 'cap reached' : 'near monthly cap'}`);
+            } else if (k.current_balance <= 0) {
+                alerts.push(`${k.name} is empty`);
+            }
+        });
+        const banner = document.getElementById('alertBanner');
+        if (alerts.length) {
+            banner.hidden = false;
+            banner.textContent = alerts.slice(0, 3).join(' · ');
+        } else {
+            banner.hidden = true;
+        }
+
+        if (!kittiesCache.length) {
+            container.innerHTML = emptyState('Add your first wallet to start tracking money.');
+            return;
+        }
+
+        container.innerHTML = kittiesCache.map(k => `
+            <article class="wallet-card">
+                <div>
+                    <div class="wallet-title">
+                        <span class="wallet-swatch" style="background:${PP.escapeHtml(k.color)}"></span>
+                        <span>${PP.escapeHtml(k.name)}</span>
+                    </div>
+                    <div class="wallet-meta">
+                        <span class="wallet-pill">${Number(k.percentage).toFixed(1)}%</span>
+                        <span>${PP.formatMoney(k.current_balance)} left</span>
+                        ${k.monthly_cap ? `<span>${PP.formatMoney(Math.max(0, k.monthly_cap - k.spent_this_month))} of ${PP.formatMoney(k.monthly_cap)} cap</span>` : ''}
+                    </div>
+                    ${k.monthly_cap ? `
+                    <div class="progress-track" title="Monthly spend cap">
+                        <span class="progress-fill" style="width:${Math.min(100, (k.spent_this_month / k.monthly_cap) * 100)}%; --bar-color:${k.spent_this_month >= k.monthly_cap ? '#dc2626' : PP.escapeHtml(k.color)}"></span>
+                    </div>` : `
+                    <div class="progress-track">
+                        <span class="progress-fill" style="width:${Math.min(100, Number(k.percentage))}%; --bar-color:${PP.escapeHtml(k.color)}"></span>
+                    </div>`}
+                </div>
+                <div class="wallet-actions">
+                    <button type="button" class="wallet-btn" onclick="selectKitty(${k.id})">Spend</button>
+                    <button type="button" class="wallet-btn" onclick="openEditKitty(${k.id})">Edit</button>
+                    <button type="button" class="wallet-btn danger" onclick="deleteKitty(${k.id})">Remove</button>
+                </div>
+            </article>
+        `).join('');
+    }
+
+    async function loadTransactions() {
+        const transactions = await PP.fetchJson('/api/transactions');
+        const feed = document.getElementById('activityFeed');
+
+        if (!transactions.length) {
+            feed.innerHTML = emptyState('No activity yet. Log your first expense with + below.');
+            document.getElementById('lastSpend').textContent = '—';
+            document.getElementById('lastSpendNote').textContent = 'None yet';
+            return;
+        }
+
+        const latestSpend = transactions.find(t => t.type === 'spending');
+        if (latestSpend) {
+            document.getElementById('lastSpend').textContent = PP.formatMoney(latestSpend.amount);
+            document.getElementById('lastSpendNote').textContent = latestSpend.description
+                ? `${latestSpend.kitty_name} · ${latestSpend.description}`
+                : latestSpend.kitty_name;
+        }
+
+        feed.innerHTML = transactions.slice(0, 12).map(t => {
+            let icon = '↓', title = t.description || 'Expense', cls = 'spend';
+            if (t.type === 'transfer_out') { icon = '↗'; title = t.description || `To ${t.related_kitty_name}`; cls = 'spend'; }
+            if (t.type === 'transfer_in') { icon = '↙'; title = t.description || `From ${t.related_kitty_name}`; cls = 'income'; }
+            return `
+                <div class="activity-row">
+                    <div class="activity-icon">${icon}</div>
+                    <div>
+                        <div class="activity-title">${PP.escapeHtml(title)}</div>
+                        <div class="activity-sub">${PP.escapeHtml(t.kitty_name)} · ${PP.relativeTime(t.date)}</div>
+                    </div>
+                    <div class="activity-amount ${cls}">${t.type === 'transfer_in' ? '+' : '−'}${PP.formatMoney(t.amount)}</div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    async function addIncome() {
+        const name = document.getElementById('incomeName').value.trim();
+        const amount = Number(document.getElementById('incomeAmount').value);
+        const notes = document.getElementById('incomeNotes').value.trim();
+
+        if (!name || amount <= 0) {
+            PP.showToast('Add where the money came from and the amount.', 'error');
+            return;
+        }
+
+        try {
+            const res = await PP.fetchJson('/api/income', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({name, amount, notes})
+            });
+            const box = document.getElementById('incomeBreakdown');
+            box.hidden = false;
+            box.innerHTML = '<strong>Split:</strong><ul>' + res.breakdown.map(b =>
+                `<li><span style="color:${b.color}">●</span> ${PP.escapeHtml(b.name)} — ${PP.formatMoney(b.amount)}</li>`
+            ).join('') + '</ul>';
+            document.getElementById('incomeName').value = '';
+            document.getElementById('incomeAmount').value = '';
+            document.getElementById('incomeNotes').value = '';
+            PP.showToast(`${PP.formatMoney(amount)} split across wallets.`, 'success');
+            refreshAll();
+            setTimeout(() => PP.closeSheet(), 1800);
+        } catch (error) {
+            PP.showToast(error.message, 'error');
+        }
+    }
+
+    async function transferMoney() {
+        const from_kitty_id = Number(document.getElementById('transferFrom').value);
+        const to_kitty_id = Number(document.getElementById('transferTo').value);
+        const amount = Number(document.getElementById('transferAmount').value);
+        const note = document.getElementById('transferNote').value.trim();
+        if (!from_kitty_id || !to_kitty_id || amount <= 0) {
+            PP.showToast('Pick wallets and amount.', 'error');
+            return;
+        }
+        try {
+            await PP.fetchJson('/api/transfer', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({from_kitty_id, to_kitty_id, amount, note})
+            });
+            document.getElementById('transferAmount').value = '';
+            document.getElementById('transferNote').value = '';
+            PP.showToast('Money moved.', 'success');
+            PP.closeSheet();
+            refreshAll();
+        } catch (e) {
+            PP.showToast(e.message, 'error');
+        }
+    }
+
+    async function addKitty() {
+        const name = document.getElementById('kittyName').value.trim();
+        const percentage = Number(document.getElementById('kittyPercent').value);
+        const color = document.getElementById('kittyColor').value;
+        const capVal = document.getElementById('kittyCap').value;
+
+        if (!name || percentage <= 0) {
+            PP.showToast('Name the wallet and set its income share.', 'error');
+            return;
+        }
+
+        try {
+            await PP.fetchJson('/api/kitties', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({name, percentage, color, monthly_cap: capVal || null})
+            });
+            document.getElementById('kittyName').value = '';
+            document.getElementById('kittyPercent').value = '';
+            PP.showToast(`${name} added.`, 'success');
+            PP.closeSheet();
+            loadKitties();
+        } catch (error) {
+            PP.showToast(error.message, 'error');
+        }
+    }
+
+    function openEditKitty(id) {
+        const kitty = kittiesCache.find(k => k.id === id);
+        if (!kitty) return;
+        document.getElementById('editKittyId').value = id;
+        document.getElementById('editKittyName').value = kitty.name;
+        document.getElementById('editKittyPercent').value = kitty.percentage;
+        document.getElementById('editKittyCap').value = kitty.monthly_cap || '';
+        PP.setSheetMode('edit');
+        document.querySelectorAll('.type-grid').forEach(el => el.style.display = 'none');
+        PP.openSheet('edit');
+    }
+
+    async function saveKittyEdit() {
+        const id = Number(document.getElementById('editKittyId').value);
+        const kitty = kittiesCache.find(k => k.id === id);
+        if (!kitty) return;
+
+        const name = document.getElementById('editKittyName').value.trim();
+        const percentage = Number(document.getElementById('editKittyPercent').value);
+        const capVal = document.getElementById('editKittyCap').value;
+
+        try {
+            await PP.fetchJson(`/api/kitties/${id}`, {
+                method: 'PUT',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({name, percentage, color: kitty.color, monthly_cap: capVal || null})
+            });
+            PP.showToast('Wallet updated.', 'success');
+            document.querySelectorAll('.type-grid').forEach(el => el.style.display = '');
+            PP.closeSheet();
+            PP.setSheetMode('spend');
+            loadKitties();
+        } catch (error) {
+            PP.showToast(error.message, 'error');
+        }
+    }
+
+    async function deleteKitty(id) {
+        const kitty = kittiesCache.find(k => k.id === id);
+        if (!confirm(`Remove ${kitty ? kitty.name : 'this wallet'} and its history?`)) return;
+
+        try {
+            await PP.fetchJson(`/api/kitties/${id}`, {method: 'DELETE'});
+            PP.showToast('Wallet removed.', 'success');
+            refreshAll();
+        } catch (error) {
+            PP.showToast(error.message, 'error');
+        }
+    }
+
+    function selectKitty(id) {
+        PP.openSheet('spend');
+        PP.setSheetMode('spend');
+        document.getElementById('spendKitty').value = id;
+        document.getElementById('spendAmount').focus();
+    }
+
+    async function recordSpending() {
+        const kitty_id = Number(document.getElementById('spendKitty').value);
+        const amount = Number(document.getElementById('spendAmount').value);
+        const description = document.getElementById('spendDesc').value.trim();
+
+        if (!kitty_id || amount <= 0) {
+            PP.showToast('Pick a wallet and enter an amount.', 'error');
+            return;
+        }
+
+        try {
+            const data = await PP.fetchJson('/api/spend', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({kitty_id, amount, description})
+            });
+            document.getElementById('spendAmount').value = '';
+            document.getElementById('spendDesc').value = '';
+            const kitty = kittiesCache.find(k => k.id === kitty_id);
+            PP.showToast(`Logged. ${PP.formatMoney(data.new_balance)} left in ${kitty ? kitty.name : 'wallet'}.`, 'success');
+            PP.closeSheet();
+            refreshAll();
+        } catch (error) {
+            PP.showToast(error.message, 'error');
+        }
+    }
+
+    function refreshAll() {
+        loadKitties();
+        loadTransactions();
+    }
+
+    document.getElementById('openSheetFab').addEventListener('click', () => {
+        document.querySelectorAll('.type-grid').forEach(el => el.style.display = '');
+        document.getElementById('incomeBreakdown').hidden = true;
+        PP.openSheet('spend');
+        PP.setSheetMode('spend');
+    });
+
+    document.querySelectorAll('#quickAmounts button').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.getElementById('spendAmount').value = btn.dataset.amt;
+        });
+    });
+
+    refreshAll();
+</script>
+{% endblock %}

@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}Set up | PesaPlan{% endblock %}
+{% block body_class %}login-page{% endblock %}
+
+{% block content %}
+<main class="onboarding-shell neo-card">
+    <div class="login-brand">
+        <div class="brand-icon">P</div>
+        <div>
+            <h1>Welcome to PesaPlan</h1>
+            <p class="login-lead">Pick a starter plan. We'll create wallets and splits — you can rename them later.</p>
+        </div>
+    </div>
+
+    <div class="template-grid">
+        <button type="button" class="template-card" data-template="student">
+            <span class="template-icon">🎓</span>
+            <strong>Student</strong>
+            <span>Food, transport, school, savings</span>
+        </button>
+        <button type="button" class="template-card" data-template="hustle">
+            <span class="template-icon">💼</span>
+            <strong>Hustle</strong>
+            <span>Bills, business costs, savings</span>
+        </button>
+        <button type="button" class="template-card" data-template="employed">
+            <span class="template-icon">🏠</span>
+            <strong>Employed</strong>
+            <span>Rent, utilities, personal</span>
+        </button>
+    </div>
+
+    <p class="onboarding-note">Each plan totals 100% income split. Tap one to continue.</p>
+    <button type="button" class="onboarding-skip" id="skipOnboarding">I'll set up wallets myself</button>
+</main>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    const PP = window.PesaPlan;
+    document.getElementById('skipOnboarding').addEventListener('click', async () => {
+        await PP.fetchJson('/api/onboarding/skip', {method: 'POST'});
+        window.location.href = '/dashboard';
+    });
+
+    document.querySelectorAll('.template-card').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            btn.disabled = true;
+            try {
+                await PP.fetchJson('/api/onboarding/setup', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({template: btn.dataset.template})
+                });
+                PP.showToast('Wallets ready — log your first income!', 'success');
+                window.location.href = '/dashboard';
+            } catch (e) {
+                PP.showToast(e.message, 'error');
+                btn.disabled = false;
+            }
+        });
+    });
+</script>
+{% endblock %}

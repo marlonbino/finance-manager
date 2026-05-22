@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% set show_bottom_nav = true %}
+{% set active_nav = 'profile' %}
+
+{% block title %}You | PesaPlan{% endblock %}
+{% block body_class %}has-bottom-nav{% endblock %}
+
+{% block content %}
+<main class="app-frame page-account">
+    <header class="app-header">
+        <div>
+            <div class="greeting">Profile</div>
+            <h1>Your details</h1>
+        </div>
+        <a href="/logout" class="header-link">Out</a>
+    </header>
+
+    <section class="panel-card neo-card">
+        <div class="panel-head">
+            <h2>Personal info</h2>
+            <p class="panel-note">Shown on exported PDF reports. Leave password blank to keep current.</p>
+        </div>
+        <div class="panel-body">
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="flash success">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <form method="POST" class="form-stack">
+                <div class="field-row">
+                    <div class="field">
+                        <label for="name">Full name</label>
+                        <input id="name" name="name" type="text" value="{{ current_user.name or '' }}" required>
+                    </div>
+                    <div class="field">
+                        <label for="phone">Phone</label>
+                        <input id="phone" name="phone" type="tel" value="{{ current_user.phone or '' }}" required>
+                    </div>
+                </div>
+                <div class="field">
+                    <label for="username">Username</label>
+                    <input id="username" name="username" type="text" value="{{ current_user.username }}" required>
+                </div>
+                <div class="field">
+                    <label for="password">New password</label>
+                    <input id="password" name="password" type="password" autocomplete="new-password" placeholder="Optional">
+                </div>
+                <button type="submit" class="btn-primary">Save changes</button>
+            </form>
+        </div>
+    </section>
+</main>
+{% endblock %}

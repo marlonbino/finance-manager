@@ -1,0 +1,429 @@
+{% extends "base.html" %}
+{% set show_bottom_nav = true %}
+{% set active_nav = 'insights' %}
+
+{% block title %}Insights | PesaPlan{% endblock %}
+{% block body_class %}has-bottom-nav{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<main class="app-frame page-reports">
+    <header class="app-header report-header">
+        <div>
+            <div class="greeting">Financial insights</div>
+            <h1>Spending report</h1>
+        </div>
+        <div class="toolbar">
+            <label class="period-picker">
+                <span class="period-picker-label">Period</span>
+                <select id="days" onchange="loadReports()" aria-label="Report period">
+                    <option value="7">Last 7 days</option>
+                    <option value="31" selected>Last 31 days</option>
+                    <option value="90">Last 90 days</option>
+                </select>
+            </label>
+        </div>
+    </header>
+
+    <div class="period-strip neo-inset" id="periodStrip">
+        <div class="period-strip-main" id="periodLabel">Loading period…</div>
+        <div class="period-strip-sub" id="periodSub">Comparing spend in this window with wallet balances today.</div>
+    </div>
+
+    <section class="report-kpi-row" aria-label="Key figures">
+        <article class="kpi-card kpi-card--primary neo-card">
+            <div class="kpi-label">Total available</div>
+            <div class="kpi-value" id="totalBalance">KES 0</div>
+            <div class="kpi-foot" id="walletCountFoot">Across 0 wallets</div>
+        </article>
+        <article class="kpi-card neo-card">
+            <div class="kpi-label">Period net</div>
+            <div class="kpi-value" id="netFlow">KES 0</div>
+            <div class="kpi-foot" id="netFlowFoot">Income minus spending</div>
+        </article>
+        <article class="kpi-card neo-card">
+            <div class="kpi-label">Next month readiness</div>
+            <div class="kpi-value" id="coveragePct">—</div>
+            <div class="kpi-foot" id="coverageFoot">Vs last month's spend</div>
+        </article>
+    </section>
+
+    <section class="flow-card neo-card" aria-label="Money in and out">
+        <div class="flow-card-head">
+            <h2>Period cash flow</h2>
+            <p class="panel-note">Income and spending logged in the selected period only.</p>
+        </div>
+        <div class="flow-bars">
+            <div class="flow-row">
+                <span class="flow-name">Income</span>
+                <div class="flow-track"><span class="flow-fill flow-fill--income" id="incomeBar"></span></div>
+                <span class="flow-amount" id="incomeSelected">KES 0</span>
+            </div>
+            <div class="flow-row">
+                <span class="flow-name">Spent</span>
+                <div class="flow-track"><span class="flow-fill flow-fill--spend" id="spendBar"></span></div>
+                <span class="flow-amount" id="spentSelected">KES 0</span>
+            </div>
+        </div>
+        <div class="flow-footer" id="flowSummary">—</div>
+    </section>
+
+    <div class="reports-charts-row">
+        <section class="panel-card neo-card">
+            <div class="panel-head">
+                <h2>Where it went</h2>
+                <p class="panel-note">Share of spending by wallet in this period</p>
+            </div>
+            <div class="panel-body chart-panel-body">
+                <div class="chart-wrap chart-wrap--donut">
+                    <canvas id="spendChart" aria-label="Spending breakdown chart"></canvas>
+                </div>
+                <div id="spendLegend" class="chart-legend"></div>
+            </div>
+        </section>
+
+        <section class="panel-card neo-card">
+            <div class="panel-head">
+                <h2>Next month coverage</h2>
+                <p class="panel-note" id="baselineNote">Balance vs last month's spend per wallet</p>
+            </div>
+            <div class="panel-body">
+                <div class="chart-wrap chart-wrap--tall">
+                    <canvas id="coverageChart" aria-label="Coverage chart"></canvas>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <section class="panel-card neo-card wallet-table-panel">
+        <div class="panel-head">
+            <h2>Wallet breakdown</h2>
+            <p class="panel-note">Sorted by spending in this period</p>
+        </div>
+        <div class="panel-body wallet-table-wrap">
+            <table class="wallet-table" id="walletTable">
+                <thead>
+                    <tr>
+                        <th scope="col">Wallet</th>
+                        <th scope="col">Status</th>
+                        <th scope="col" class="num">Period spend</th>
+                        <th scope="col" class="num">Balance</th>
+                        <th scope="col" class="num">Share</th>
+                        <th scope="col" class="num">Covers next mo.</th>
+                    </tr>
+                </thead>
+                <tbody id="walletTableBody"></tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="panel-card neo-card" id="alertsSection">
+        <div class="panel-head">
+            <h2>Alerts &amp; takeaways</h2>
+            <p class="panel-note">What deserves your attention</p>
+        </div>
+        <div class="panel-body">
+            <div id="insights" class="insight-list"></div>
+        </div>
+    </section>
+
+    <details class="export-details neo-card">
+        <summary>Export PDF report</summary>
+        <div class="export-details-body">
+            <p class="panel-note">Choose sections to include in the download.</p>
+            <div class="check-row">
+                <label class="check-chip"><input type="checkbox" name="section" value="summary" checked> Overview</label>
+                <label class="check-chip"><input type="checkbox" name="section" value="kitty_health" checked> Spending</label>
+                <label class="check-chip"><input type="checkbox" name="section" value="projection" checked> Coverage</label>
+                <label class="check-chip"><input type="checkbox" name="section" value="insights" checked> Alerts</label>
+            </div>
+            <button type="button" class="btn-primary" onclick="downloadPdf()">Download PDF</button>
+        </div>
+    </details>
+</main>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    const PP = window.PesaPlan;
+    let spendChart;
+    let coverageChart;
+
+    const STATUS = {
+        healthy: { label: 'On track', class: 'healthy' },
+        low: { label: 'Running low', class: 'low' },
+        depleted: { label: 'Empty', class: 'depleted' },
+        fast: { label: 'Spending faster', class: 'fast' }
+    };
+
+    Chart.defaults.font.family = '"DM Sans", system-ui, sans-serif';
+    Chart.defaults.color = '#5c6b7a';
+
+    async function loadReports() {
+        const days = document.getElementById('days').value;
+        const data = await PP.fetchJson(`/api/reports/insights?days=${days}`);
+        const { summary, period, kitties, insights } = data;
+
+        document.getElementById('periodLabel').textContent = period.label;
+        document.getElementById('periodSub').textContent =
+            `Baseline for next-month coverage: ${period.baseline_label}. Generated ${period.generated_at}.`;
+        document.getElementById('baselineNote').textContent =
+            `Each bar shows how much of last month's spend (${period.baseline_label}) your current balance covers.`;
+
+        document.getElementById('totalBalance').textContent = PP.formatMoney(summary.total_balance);
+        document.getElementById('walletCountFoot').textContent =
+            `Across ${summary.kitty_count} wallet${summary.kitty_count === 1 ? '' : 's'}`;
+
+        const net = summary.net_flow;
+        const netEl = document.getElementById('netFlow');
+        const sign = net > 0 ? '+' : net < 0 ? '−' : '';
+        netEl.textContent = sign + PP.formatMoney(Math.abs(net));
+        netEl.classList.toggle('kpi-negative', net < 0);
+        netEl.classList.toggle('kpi-positive', net > 0);
+        document.getElementById('netFlowFoot').textContent =
+            net > 0 ? 'More income than spend' : net < 0 ? 'More spend than income' : 'Income matched spending';
+
+        const cov = summary.overall_coverage_pct;
+        document.getElementById('coveragePct').textContent = summary.projected_next_month_need > 0
+            ? `${cov}%`
+            : '—';
+        document.getElementById('coverageFoot').textContent = summary.next_month_gap > 0
+            ? `${PP.formatMoney(summary.next_month_gap)} still needed`
+            : summary.projected_next_month_need > 0
+                ? 'Balances cover last month'
+                : 'No prior-month baseline yet';
+
+        document.getElementById('incomeSelected').textContent = PP.formatMoney(summary.income_selected);
+        document.getElementById('spentSelected').textContent = PP.formatMoney(summary.spent_selected);
+        renderFlowBars(summary);
+        renderSpendChart(kitties);
+        renderCoverageChart(kitties);
+        renderWalletTable(kitties);
+        renderInsights(insights);
+    }
+
+    function renderFlowBars(summary) {
+        const max = Math.max(summary.income_selected, summary.spent_selected, 1);
+        document.getElementById('incomeBar').style.width = `${(summary.income_selected / max) * 100}%`;
+        document.getElementById('spendBar').style.width = `${(summary.spent_selected / max) * 100}%`;
+        const net = summary.net_flow;
+        let msg = 'No income or spending logged in this period yet.';
+        if (summary.income_selected > 0 || summary.spent_selected > 0) {
+            if (net > 0) {
+                msg = `${PP.formatMoney(net)} unspent from income in this period (still in your wallets).`;
+            } else if (net < 0) {
+                msg = `Spending exceeded logged income by ${PP.formatMoney(Math.abs(net))}. Balances may be from earlier income.`;
+            } else {
+                msg = 'Income and spending in this period are equal.';
+            }
+        }
+        document.getElementById('flowSummary').textContent = msg;
+    }
+
+    function renderSpendChart(kitties) {
+        const ctx = document.getElementById('spendChart').getContext('2d');
+        const active = kitties.filter(k => k.spent_selected > 0);
+        const legend = document.getElementById('spendLegend');
+
+        if (spendChart) spendChart.destroy();
+
+        if (!active.length) {
+            legend.innerHTML = '<div class="empty-state">No spending in this period yet.</div>';
+            spendChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: { labels: ['No data'], datasets: [{ data: [1], backgroundColor: ['#d8e0e8'] }] },
+                options: { plugins: { legend: { display: false }, tooltip: { enabled: false } } }
+            });
+            return;
+        }
+
+        const labels = active.map(k => k.name);
+        const values = active.map(k => k.spent_selected);
+        const colors = active.map(k => k.color);
+
+        spendChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels,
+                datasets: [{
+                    data: values,
+                    backgroundColor: colors,
+                    borderWidth: 0,
+                    hoverOffset: 6
+                }]
+            },
+            options: {
+                cutout: '62%',
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: ctx => {
+                                const pct = active[ctx.dataIndex].spend_share_pct;
+                                return ` ${PP.formatMoney(ctx.raw)} (${pct}%)`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        legend.innerHTML = active.map(k => `
+            <div class="legend-item">
+                <span class="legend-dot" style="background:${PP.escapeHtml(k.color)}"></span>
+                <span class="legend-name">${PP.escapeHtml(k.name)}</span>
+                <span class="legend-val">${PP.formatMoney(k.spent_selected)}</span>
+                <span class="legend-pct">${k.spend_share_pct}%</span>
+            </div>
+        `).join('');
+    }
+
+    function renderCoverageChart(kitties) {
+        const ctx = document.getElementById('coverageChart').getContext('2d');
+        if (coverageChart) coverageChart.destroy();
+
+        const rows = [...kitties].sort((a, b) => a.coverage_pct - b.coverage_pct);
+        if (!rows.length) {
+            coverageChart = new Chart(ctx, {
+                type: 'bar',
+                data: { labels: ['No wallets'], datasets: [{ data: [0] }] },
+                options: { plugins: { legend: { display: false } } }
+            });
+            return;
+        }
+
+        coverageChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: rows.map(k => k.name),
+                datasets: [{
+                    label: 'Coverage %',
+                    data: rows.map(k => k.coverage_pct),
+                    backgroundColor: rows.map(k => {
+                        if (k.coverage_pct >= 100) return '#0f766e';
+                        if (k.coverage_pct >= 50) return '#2563eb';
+                        if (k.coverage_pct > 0) return '#d97706';
+                        return '#dc2626';
+                    }),
+                    borderRadius: 6,
+                    barThickness: 18
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            afterLabel: ctx => {
+                                const k = rows[ctx.dataIndex];
+                                return [
+                                    `Balance: ${PP.formatMoney(k.balance)}`,
+                                    `Last month spend: ${PP.formatMoney(k.projected_next_month_need)}`,
+                                    k.next_month_gap > 0 ? `Shortfall: ${PP.formatMoney(k.next_month_gap)}` : 'Fully covered'
+                                ];
+                            },
+                            label: ctx => ` ${ctx.raw}% covered`
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        min: 0,
+                        max: 100,
+                        ticks: { callback: v => `${v}%` },
+                        grid: { color: 'rgba(197, 206, 216, 0.45)' }
+                    },
+                    y: {
+                        grid: { display: false },
+                        ticks: { font: { weight: '600', size: 11 } }
+                    }
+                }
+            }
+        });
+    }
+
+    function renderWalletTable(kitties) {
+        const body = document.getElementById('walletTableBody');
+        if (!kitties.length) {
+            body.innerHTML = `<tr><td colspan="6" class="empty-state">Add wallets on Home to see a breakdown here.</td></tr>`;
+            return;
+        }
+
+        body.innerHTML = kitties.map(k => {
+            const st = STATUS[k.status] || STATUS.healthy;
+            const share = k.spent_selected > 0 ? `${k.spend_share_pct}%` : '—';
+            let cover = '—';
+            if (k.projected_next_month_need > 0) {
+                cover = k.next_month_gap > 0
+                    ? `<span class="cover-warn">${k.coverage_pct}% · short ${PP.formatMoney(k.next_month_gap)}</span>`
+                    : `<span class="cover-ok">${k.coverage_pct}%</span>`;
+            } else if (k.balance > 0) {
+                cover = '<span class="cover-ok">No baseline</span>';
+            }
+
+            return `
+                <tr>
+                    <td>
+                        <span class="table-wallet">
+                            <span class="table-swatch" style="background:${PP.escapeHtml(k.color)}"></span>
+                            ${PP.escapeHtml(k.name)}
+                        </span>
+                    </td>
+                    <td><span class="status-badge ${st.class}">${st.label}</span></td>
+                    <td class="num">${k.spent_selected > 0 ? PP.formatMoney(k.spent_selected) : '—'}</td>
+                    <td class="num">${PP.formatMoney(k.balance)}</td>
+                    <td class="num">${share}</td>
+                    <td class="num">${cover}</td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    function renderInsights(insights) {
+        const container = document.getElementById('insights');
+        if (!insights.length) {
+            container.innerHTML = '<div class="empty-state">Log income and spending to generate personalized takeaways.</div>';
+            return;
+        }
+
+        const icons = { warn: '!', success: '✓', info: 'i' };
+        container.innerHTML = insights.map(item => {
+            if (typeof item === 'string') {
+                return `
+                    <article class="insight-card insight-card--info">
+                        <div class="insight-icon" aria-hidden="true">i</div>
+                        <div><p class="insight-message">${PP.escapeHtml(item)}</p></div>
+                    </article>`;
+            }
+            const level = item.level || 'info';
+            const title = item.title || '';
+            const message = item.message || '';
+            return `
+                <article class="insight-card insight-card--${level}">
+                    <div class="insight-icon" aria-hidden="true">${icons[level] || 'i'}</div>
+                    <div>
+                        <h3 class="insight-title">${PP.escapeHtml(title)}</h3>
+                        <p class="insight-message">${PP.escapeHtml(typeof message === 'string' ? message : '')}</p>
+                    </div>
+                </article>
+            `;
+        }).join('');
+    }
+
+    function downloadPdf() {
+        const days = document.getElementById('days').value;
+        const params = new URLSearchParams({ days });
+        document.querySelectorAll('input[name="section"]:checked').forEach(input => {
+            params.append('sections', input.value);
+        });
+        if (!params.has('sections')) params.append('sections', 'summary');
+        window.location.href = `/reports/pdf?${params.toString()}`;
+    }
+
+    loadReports().catch(err => PP.showToast(err.message, 'error'));
+</script>
+{% endblock %}

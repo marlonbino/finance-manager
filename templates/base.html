@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>{% block title %}PesaPlan{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/pesaplan.css') }}">
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="{% block body_class %}{% endblock %}">
+    {% block content %}{% endblock %}
+
+    {% if show_bottom_nav %}
+    <nav class="bottom-nav bottom-nav--4" aria-label="Main navigation">
+        <div class="side-brand" aria-hidden="true">
+            <span class="brand-icon">P</span>
+            <span>PesaPlan</span>
+        </div>
+        <a href="/dashboard" class="{% if active_nav == 'home' %}active{% endif %}">
+            <span class="nav-icon" aria-hidden="true">⌂</span>
+            Home
+        </a>
+        <a href="/activity" class="{% if active_nav == 'activity' %}active{% endif %}">
+            <span class="nav-icon" aria-hidden="true">☰</span>
+            Activity
+        </a>
+        <a href="/reports" class="{% if active_nav == 'insights' %}active{% endif %}">
+            <span class="nav-icon" aria-hidden="true">◔</span>
+            Insights
+        </a>
+        <a href="/account" class="{% if active_nav == 'profile' %}active{% endif %}">
+            <span class="nav-icon" aria-hidden="true">◎</span>
+            You
+        </a>
+    </nav>
+    {% endif %}
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

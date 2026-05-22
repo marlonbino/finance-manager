@@ -1,0 +1,9 @@
+services:
+  finance-manager:
+    build: .
+    ports:
+      - "5000:5000"
+    environment:
+      - TZ=Africa/Nairobi
+    volumes:
+      - ./data:/app/data
