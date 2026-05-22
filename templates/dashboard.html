@@ -69,21 +69,30 @@
 
 <button type="button" class="fab" id="openSheetFab" aria-haspopup="dialog">+ Log money</button>
 
-<div id="money-sheet" class="sheet-root" aria-hidden="true" role="dialog" aria-labelledby="sheet-title">
-    <div class="sheet-backdrop" data-sheet-close></div>
+<!-- MODAL: Quick Actions (Spend/Income/Transfer/Add Wallet) -->
+<div id="quick-actions-modal" class="sheet-root" aria-hidden="true" role="dialog">
+    <div class="sheet-backdrop" onclick="closeAllModals()"></div>
     <div class="sheet-panel">
         <div class="sheet-handle" aria-hidden="true"></div>
-        <h2 class="sheet-title" id="sheet-title">Log expense</h2>
-        <p class="sheet-sub" id="sheet-sub">Record what you spent and from which wallet.</p>
-
+        <h2 class="sheet-title">What to log?</h2>
+        <p class="sheet-sub">Choose a transaction type to continue.</p>
         <div class="type-grid type-grid--4" role="tablist">
-            <button type="button" class="type-tile active" data-mode="spend"><span>↓</span>Spend</button>
-            <button type="button" class="type-tile" data-mode="income"><span>↑</span>Income</button>
-            <button type="button" class="type-tile" data-mode="transfer"><span>↔</span>Move</button>
-            <button type="button" class="type-tile" data-mode="wallet"><span>+</span>Wallet</button>
+            <button type="button" class="type-tile" onclick="openModal('spend-modal')"><span>↓</span>Spend</button>
+            <button type="button" class="type-tile" onclick="openModal('income-modal')"><span>↑</span>Income</button>
+            <button type="button" class="type-tile" onclick="openModal('transfer-modal')"><span>↔</span>Move</button>
+            <button type="button" class="type-tile" onclick="openModal('add-wallet-modal')"><span>+</span>Wallet</button>
         </div>
+    </div>
+</div>
 
-        <form class="sheet-form active" data-mode="spend" onsubmit="event.preventDefault(); recordSpending();">
+<!-- MODAL: Log Expense -->
+<div id="spend-modal" class="sheet-root" aria-hidden="true" role="dialog" aria-labelledby="spend-title">
+    <div class="sheet-backdrop" onclick="closeAllModals()"></div>
+    <div class="sheet-panel">
+        <div class="sheet-handle" aria-hidden="true"></div>
+        <h2 class="sheet-title" id="spend-title">↓ Log expense</h2>
+        <p class="sheet-sub">Record what you spent and from which wallet.</p>
+        <form onsubmit="event.preventDefault(); recordSpending();">
             <div class="form-stack">
                 <div class="field">
                     <label for="spendKitty">Which wallet?</label>
@@ -105,11 +114,23 @@
                         <input type="text" id="spendDesc" placeholder="Lunch, fuel…" autocomplete="off">
                     </div>
                 </div>
-                <button type="submit" class="btn-primary">Confirm expense</button>
+                <div class="sheet-actions">
+                    <button type="button" class="btn-ghost" onclick="closeAllModals()">Cancel</button>
+                    <button type="submit" class="btn-primary">Confirm expense</button>
+                </div>
             </div>
         </form>
+    </div>
+</div>
 
-        <form class="sheet-form" data-mode="income" onsubmit="event.preventDefault(); addIncome();">
+<!-- MODAL: Record Income -->
+<div id="income-modal" class="sheet-root" aria-hidden="true" role="dialog" aria-labelledby="income-title">
+    <div class="sheet-backdrop" onclick="closeAllModals()"></div>
+    <div class="sheet-panel">
+        <div class="sheet-handle" aria-hidden="true"></div>
+        <h2 class="sheet-title" id="income-title">↑ Record income</h2>
+        <p class="sheet-sub">We split it across your wallets automatically.</p>
+        <form onsubmit="event.preventDefault(); addIncome();">
             <div class="form-stack">
                 <div class="field">
                     <label for="incomeName">Where from?</label>
@@ -127,11 +148,23 @@
                         <input type="text" id="incomeNotes" placeholder="Optional" autocomplete="off">
                     </div>
                 </div>
-                <button type="submit" class="btn-primary">Split into wallets</button>
+                <div class="sheet-actions">
+                    <button type="button" class="btn-ghost" onclick="closeAllModals()">Cancel</button>
+                    <button type="submit" class="btn-primary">Split into wallets</button>
+                </div>
             </div>
         </form>
+    </div>
+</div>
 
-        <form class="sheet-form" data-mode="transfer" onsubmit="event.preventDefault(); transferMoney();">
+<!-- MODAL: Move Money -->
+<div id="transfer-modal" class="sheet-root" aria-hidden="true" role="dialog" aria-labelledby="transfer-title">
+    <div class="sheet-backdrop" onclick="closeAllModals()"></div>
+    <div class="sheet-panel">
+        <div class="sheet-handle" aria-hidden="true"></div>
+        <h2 class="sheet-title" id="transfer-title">↔ Move money</h2>
+        <p class="sheet-sub">Shift balance between wallets — not spending.</p>
+        <form onsubmit="event.preventDefault(); transferMoney();">
             <div class="form-stack">
                 <div class="field">
                     <label for="transferFrom">From wallet</label>
@@ -149,11 +182,23 @@
                     <label for="transferNote">Note</label>
                     <input type="text" id="transferNote" placeholder="Optional" autocomplete="off">
                 </div>
-                <button type="submit" class="btn-primary">Move money</button>
+                <div class="sheet-actions">
+                    <button type="button" class="btn-ghost" onclick="closeAllModals()">Cancel</button>
+                    <button type="submit" class="btn-primary">Move money</button>
+                </div>
             </div>
         </form>
+    </div>
+</div>
 
-        <form class="sheet-form" data-mode="wallet" onsubmit="event.preventDefault(); addKitty();">
+<!-- MODAL: Add Wallet -->
+<div id="add-wallet-modal" class="sheet-root" aria-hidden="true" role="dialog" aria-labelledby="add-wallet-title">
+    <div class="sheet-backdrop" onclick="closeAllModals()"></div>
+    <div class="sheet-panel">
+        <div class="sheet-handle" aria-hidden="true"></div>
+        <h2 class="sheet-title" id="add-wallet-title">+ Add wallet</h2>
+        <p class="sheet-sub">Name it and set its share of income (total must reach 100%).</p>
+        <form onsubmit="event.preventDefault(); addKitty();">
             <div class="form-stack">
                 <div class="field">
                     <label for="kittyName">Wallet name</label>
@@ -173,11 +218,23 @@
                     <label for="kittyCap">Monthly cap (optional)</label>
                     <input type="number" id="kittyCap" min="0" step="1" placeholder="e.g. 5000">
                 </div>
-                <button type="submit" class="btn-primary">Add wallet</button>
+                <div class="sheet-actions">
+                    <button type="button" class="btn-ghost" onclick="closeAllModals()">Cancel</button>
+                    <button type="submit" class="btn-primary">Add wallet</button>
+                </div>
             </div>
         </form>
+    </div>
+</div>
 
-        <form class="sheet-form" data-mode="edit" onsubmit="event.preventDefault(); saveKittyEdit();">
+<!-- MODAL: Edit Wallet (Separate from all others) -->
+<div id="edit-wallet-modal" class="sheet-root" aria-hidden="true" role="dialog" aria-labelledby="edit-wallet-title">
+    <div class="sheet-backdrop" onclick="closeAllModals()"></div>
+    <div class="sheet-panel">
+        <div class="sheet-handle" aria-hidden="true"></div>
+        <h2 class="sheet-title" id="edit-wallet-title">✎ Edit wallet</h2>
+        <p class="sheet-sub">Update name, share, or monthly cap.</p>
+        <form onsubmit="event.preventDefault(); saveKittyEdit();">
             <input type="hidden" id="editKittyId">
             <div class="form-stack">
                 <div class="field">
@@ -195,7 +252,7 @@
                     </div>
                 </div>
                 <div class="sheet-actions">
-                    <button type="button" class="btn-ghost" data-sheet-close>Cancel</button>
+                    <button type="button" class="btn-ghost" onclick="closeAllModals()">Cancel</button>
                     <button type="submit" class="btn-primary">Save changes</button>
                 </div>
             </div>
@@ -208,6 +265,21 @@
 <script>
     const PP = window.PesaPlan;
     let kittiesCache = [];
+
+    // Modal management
+    function openModal(modalId) {
+        document.getElementById(modalId).classList.add('open');
+        document.getElementById(modalId).setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeAllModals() {
+        document.querySelectorAll('.sheet-root').forEach(modal => {
+            modal.classList.remove('open');
+            modal.setAttribute('aria-hidden', 'true');
+        });
+        document.body.style.overflow = '';
+    }
 
     function emptyState(text) {
         return `<div class="empty-state">${PP.escapeHtml(text)}</div>`;
@@ -285,8 +357,8 @@
                     </div>`}
                 </div>
                 <div class="wallet-actions">
-                    <button type="button" class="wallet-btn" onclick="selectKitty(${k.id})">Spend</button>
-                    <button type="button" class="wallet-btn" onclick="openEditKitty(${k.id})">Edit</button>
+                    <button type="button" class="wallet-btn" onclick="spendFromWallet(${k.id})">Spend</button>
+                    <button type="button" class="wallet-btn" onclick="editWallet(${k.id})">Edit</button>
                     <button type="button" class="wallet-btn danger" onclick="deleteKitty(${k.id})">Remove</button>
                 </div>
             </article>
@@ -329,6 +401,41 @@
         }).join('');
     }
 
+    // Spend modal
+    function spendFromWallet(id) {
+        openModal('spend-modal');
+        document.getElementById('spendKitty').value = id;
+        document.getElementById('spendAmount').focus();
+    }
+
+    async function recordSpending() {
+        const kitty_id = Number(document.getElementById('spendKitty').value);
+        const amount = Number(document.getElementById('spendAmount').value);
+        const description = document.getElementById('spendDesc').value.trim();
+
+        if (!kitty_id || amount <= 0) {
+            PP.showToast('Pick a wallet and enter an amount.', 'error');
+            return;
+        }
+
+        try {
+            const data = await PP.fetchJson('/api/spend', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({kitty_id, amount, description})
+            });
+            document.getElementById('spendAmount').value = '';
+            document.getElementById('spendDesc').value = '';
+            const kitty = kittiesCache.find(k => k.id === kitty_id);
+            PP.showToast(`Logged. ${PP.formatMoney(data.new_balance)} left in ${kitty ? kitty.name : 'wallet'}.`, 'success');
+            closeAllModals();
+            refreshAll();
+        } catch (error) {
+            PP.showToast(error.message, 'error');
+        }
+    }
+
+    // Income modal
     async function addIncome() {
         const name = document.getElementById('incomeName').value.trim();
         const amount = Number(document.getElementById('incomeAmount').value);
@@ -355,12 +462,13 @@
             document.getElementById('incomeNotes').value = '';
             PP.showToast(`${PP.formatMoney(amount)} split across wallets.`, 'success');
             refreshAll();
-            setTimeout(() => PP.closeSheet(), 1800);
+            setTimeout(() => closeAllModals(), 1800);
         } catch (error) {
             PP.showToast(error.message, 'error');
         }
     }
 
+    // Transfer modal
     async function transferMoney() {
         const from_kitty_id = Number(document.getElementById('transferFrom').value);
         const to_kitty_id = Number(document.getElementById('transferTo').value);
@@ -379,13 +487,14 @@
             document.getElementById('transferAmount').value = '';
             document.getElementById('transferNote').value = '';
             PP.showToast('Money moved.', 'success');
-            PP.closeSheet();
+            closeAllModals();
             refreshAll();
         } catch (e) {
             PP.showToast(e.message, 'error');
         }
     }
 
+    // Add wallet modal
     async function addKitty() {
         const name = document.getElementById('kittyName').value.trim();
         const percentage = Number(document.getElementById('kittyPercent').value);
@@ -405,24 +514,24 @@
             });
             document.getElementById('kittyName').value = '';
             document.getElementById('kittyPercent').value = '';
+            document.getElementById('kittyCap').value = '';
             PP.showToast(`${name} added.`, 'success');
-            PP.closeSheet();
+            closeAllModals();
             loadKitties();
         } catch (error) {
             PP.showToast(error.message, 'error');
         }
     }
 
-    function openEditKitty(id) {
+    // Edit wallet modal (SEPARATE)
+    function editWallet(id) {
         const kitty = kittiesCache.find(k => k.id === id);
         if (!kitty) return;
         document.getElementById('editKittyId').value = id;
         document.getElementById('editKittyName').value = kitty.name;
         document.getElementById('editKittyPercent').value = kitty.percentage;
         document.getElementById('editKittyCap').value = kitty.monthly_cap || '';
-        PP.setSheetMode('edit');
-        document.querySelectorAll('.type-grid').forEach(el => el.style.display = 'none');
-        PP.openSheet('edit');
+        openModal('edit-wallet-modal');
     }
 
     async function saveKittyEdit() {
@@ -441,9 +550,7 @@
                 body: JSON.stringify({name, percentage, color: kitty.color, monthly_cap: capVal || null})
             });
             PP.showToast('Wallet updated.', 'success');
-            document.querySelectorAll('.type-grid').forEach(el => el.style.display = '');
-            PP.closeSheet();
-            PP.setSheetMode('spend');
+            closeAllModals();
             loadKitties();
         } catch (error) {
             PP.showToast(error.message, 'error');
@@ -463,50 +570,18 @@
         }
     }
 
-    function selectKitty(id) {
-        PP.openSheet('spend');
-        PP.setSheetMode('spend');
-        document.getElementById('spendKitty').value = id;
-        document.getElementById('spendAmount').focus();
-    }
-
-    async function recordSpending() {
-        const kitty_id = Number(document.getElementById('spendKitty').value);
-        const amount = Number(document.getElementById('spendAmount').value);
-        const description = document.getElementById('spendDesc').value.trim();
-
-        if (!kitty_id || amount <= 0) {
-            PP.showToast('Pick a wallet and enter an amount.', 'error');
-            return;
-        }
-
-        try {
-            const data = await PP.fetchJson('/api/spend', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({kitty_id, amount, description})
-            });
-            document.getElementById('spendAmount').value = '';
-            document.getElementById('spendDesc').value = '';
-            const kitty = kittiesCache.find(k => k.id === kitty_id);
-            PP.showToast(`Logged. ${PP.formatMoney(data.new_balance)} left in ${kitty ? kitty.name : 'wallet'}.`, 'success');
-            PP.closeSheet();
-            refreshAll();
-        } catch (error) {
-            PP.showToast(error.message, 'error');
-        }
-    }
-
     function refreshAll() {
         loadKitties();
         loadTransactions();
     }
 
+    // Event listeners
     document.getElementById('openSheetFab').addEventListener('click', () => {
-        document.querySelectorAll('.type-grid').forEach(el => el.style.display = '');
-        document.getElementById('incomeBreakdown').hidden = true;
-        PP.openSheet('spend');
-        PP.setSheetMode('spend');
+        openModal('quick-actions-modal');
+    });
+
+    document.addEventListener('keydown', event => {
+        if (event.key === 'Escape') closeAllModals();
     });
 
     document.querySelectorAll('#quickAmounts button').forEach(btn => {
